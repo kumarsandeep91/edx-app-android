@@ -285,7 +285,6 @@ public class CourseUnitNavigationActivityTest extends CourseBaseActivityTest {
         } else {
             assertThat(prevUnitLabel).isVisible();
             assertThat(prevUnitLabel).hasText(prevSection.getDisplayName());
-            assertThat(prevButton).hasText(R.string.assessment_previous_unit);
         }
         if (nextSection == null ||
                 currentUnit.getParent().equals(nextSection)) {
@@ -294,7 +293,6 @@ public class CourseUnitNavigationActivityTest extends CourseBaseActivityTest {
         } else {
             assertThat(nextUnitLabel).isVisible();
             assertThat(nextUnitLabel).hasText(nextSection.getDisplayName());
-            assertThat(nextButton).hasText(R.string.assessment_next_unit);
         }
     }
     /**

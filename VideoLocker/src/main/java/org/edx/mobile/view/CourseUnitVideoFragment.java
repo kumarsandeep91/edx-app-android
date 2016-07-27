@@ -17,7 +17,6 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.inject.Inject;
@@ -27,23 +26,18 @@ import org.edx.mobile.base.BaseFragmentActivity;
 import org.edx.mobile.logger.Logger;
 import org.edx.mobile.model.api.EnrolledCoursesResponse;
 import org.edx.mobile.model.api.LectureModel;
-import org.edx.mobile.model.api.ProfileModel;
 import org.edx.mobile.model.api.TranscriptModel;
 import org.edx.mobile.model.course.VideoBlockModel;
 import org.edx.mobile.model.db.DownloadEntry;
 import org.edx.mobile.module.db.DataCallback;
 import org.edx.mobile.module.db.impl.DatabaseFactory;
-import org.edx.mobile.module.prefs.LoginPrefs;
-import org.edx.mobile.module.prefs.PrefManager;
 import org.edx.mobile.player.IPlayerEventCallback;
 import org.edx.mobile.player.PlayerFragment;
 import org.edx.mobile.player.TranscriptManager;
 import org.edx.mobile.services.ViewPagerDownloadManager;
 import org.edx.mobile.task.CircularProgressTask;
 import org.edx.mobile.util.AppConstants;
-import org.edx.mobile.util.BrowserUtil;
 import org.edx.mobile.util.MediaConsentUtils;
-import org.edx.mobile.util.MemoryUtil;
 import org.edx.mobile.util.NetworkUtil;
 import org.edx.mobile.view.custom.ProgressWheel;
 import org.edx.mobile.view.dialog.DeleteVideoDialogFragment;
@@ -75,19 +69,26 @@ public class CourseUnitVideoFragment extends CourseUnitFragment
     private final Handler playHandler = new Handler();
     private View messageContainer;
 
+    private final static String HAS_NEXT_UNIT_ID = "has next unit";
+    private boolean hasNextUnit;
+
+    private final static String HAS_PREV_UNIT_ID = "has prev unit";
+    private boolean hasPreviousUnit;
+
     @Inject
     TranscriptManager transcriptManager;
-
 
     /**
      * Create a new instance of fragment
      */
-    public static CourseUnitVideoFragment newInstance(VideoBlockModel unit) {
+    public static CourseUnitVideoFragment newInstance(VideoBlockModel unit, boolean hasNextUnit, boolean hasPreviousUnit) {
         CourseUnitVideoFragment f = new CourseUnitVideoFragment();
 
         // Supply num input as an argument.
         Bundle args = new Bundle();
         args.putSerializable(Router.EXTRA_COURSE_UNIT, unit);
+        args.putBoolean(HAS_NEXT_UNIT_ID, hasNextUnit);
+        args.putBoolean(HAS_PREV_UNIT_ID, hasPreviousUnit);
         f.setArguments(args);
 
         return f;
@@ -102,6 +103,8 @@ public class CourseUnitVideoFragment extends CourseUnitFragment
         setRetainInstance(true);
         unit = getArguments() == null ? null :
             (VideoBlockModel) getArguments().getSerializable(Router.EXTRA_COURSE_UNIT);
+        hasNextUnit = getArguments().getBoolean(HAS_NEXT_UNIT_ID);
+        hasPreviousUnit = getArguments().getBoolean(HAS_PREV_UNIT_ID);
     }
 
     /**
@@ -168,6 +171,33 @@ public class CourseUnitVideoFragment extends CourseUnitFragment
 
             playerFragment = new PlayerFragment();
             playerFragment.setCallback(this);
+
+            final CourseUnitNavigationActivity activity = (CourseUnitNavigationActivity)getActivity();
+            if (activity != null) {
+                View.OnClickListener next = null;
+                View.OnClickListener prev = null;
+
+                if (hasNextUnit) {
+                    next = new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            activity.navigateNextComponent();
+                        }
+                    };
+                }
+
+                if (hasPreviousUnit) {
+                    prev = new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            activity.navigatePreviousComponent();
+                        }
+                    };
+                }
+
+                playerFragment.setNextPreviousListeners(next, prev);
+            }
+
             try{
                 FragmentManager fm = getChildFragmentManager();
                 FragmentTransaction ft = fm.beginTransaction();
@@ -434,6 +464,11 @@ public class CourseUnitVideoFragment extends CourseUnitFragment
         }
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateUIForOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE);
+    }
 
     public boolean isActivityStarted() {
         return isActivityStarted;
@@ -639,15 +674,9 @@ public class CourseUnitVideoFragment extends CourseUnitFragment
         }
     };
 
-    /**
-     * mostly the orientation changes.
-     * @param newConfig
-     */
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
+    private void updateUIForOrientation(boolean isLandscape) {
         //TODO - should we use load different layout file?
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        if (isLandscape) {
             messageContainer.setVisibility(View.GONE);
             getActivity().getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -657,7 +686,7 @@ public class CourseUnitVideoFragment extends CourseUnitFragment
                 DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
                 float screenHeight = displayMetrics.heightPixels;
                 playerContainer.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, (int) screenHeight));
+                        LinearLayout.LayoutParams.MATCH_PARENT, (int) screenHeight));
                 playerContainer.requestLayout();
             }
         } else {
@@ -671,11 +700,19 @@ public class CourseUnitVideoFragment extends CourseUnitFragment
                 float ideaHeight = screenWidth * 9 / 16;
 
                 playerContainer.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, (int) ideaHeight));
+                        LinearLayout.LayoutParams.MATCH_PARENT, (int) ideaHeight));
                 playerContainer.requestLayout();
             }
         }
     }
 
-
+    /**
+     * mostly the orientation changes.
+     * @param newConfig
+     */
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        updateUIForOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE);
+    }
 }

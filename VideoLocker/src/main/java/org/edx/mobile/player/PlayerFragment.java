@@ -117,7 +117,6 @@ public class PlayerFragment extends BaseFragment implements IPlayerListener, Ser
     private DownloadEntry videoEntry;
     private AccessibilityManager.TouchExplorationStateChangeListener touchExplorationStateChangeListener;
 
-
     private EnumSet<VideoNotPlayMessageType> curMessageTypes =  EnumSet.noneOf(VideoNotPlayMessageType.class);
 
     private boolean isManualFullscreen = false;
@@ -560,9 +559,10 @@ public class PlayerFragment extends BaseFragment implements IPlayerListener, Ser
 
             // changed to true after Lou's comments to hide the controllers
             controller.setAutoHide(true);
-
-            controller.setNextPreviousListeners(nextListner, prevListner);
             player.setController(controller);
+
+            updateNextPreviousListeners(isScreenLandscape());
+
             reAttachPlayEventListener();
 
         } catch(Exception e) {
@@ -571,11 +571,9 @@ public class PlayerFragment extends BaseFragment implements IPlayerListener, Ser
     }
 
     public void setNextPreviousListeners(View.OnClickListener next, View.OnClickListener prev) {
-        if (player != null && isScreenLandscape()) {
-            this.prevListner = prev;
-            this.nextListner = next;
-            player.setNextPreviousListeners(next, prev);
-        }
+        this.prevListner = prev;
+        this.nextListner = next;
+        updateNextPreviousListeners(isScreenLandscape());
     }
 
     @Override
@@ -1889,6 +1887,18 @@ public class PlayerFragment extends BaseFragment implements IPlayerListener, Ser
         super.onConfigurationChanged(newConfig);
         boolean isLandscape = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE;
         player.setFullScreen(isLandscape);
+        updateNextPreviousListeners(isLandscape);
         updateController("orientation change");
+    }
+
+    private void updateNextPreviousListeners(boolean isScreenLandscape) {
+        if (player != null) {
+            if (isScreenLandscape) {
+                player.setNextPreviousListeners(nextListner, prevListner);
+
+            } else {
+                player.setNextPreviousListeners(null, null);
+            }
+        }
     }
 }
